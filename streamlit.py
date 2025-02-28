@@ -50,37 +50,53 @@ def display_message_part(part):
     Customize how you display system prompts, user prompts,
     tool calls, tool returns, etc.
     """
-    if part.part_kind == 'system-prompt':
-        with st.chat_message("system"):
-            st.markdown(f"**System**: {part.content}")
-    elif part.part_kind == 'user-prompt':
-        with st.chat_message("user"):
-            st.markdown(part.content)
-    elif part.part_kind == 'text':
-        with st.chat_message("assistant"):
-            st.markdown(part.content)
-    elif part.part_kind == 'tool-call':
-        with st.chat_message("tool"):
-            st.markdown(f"🔧 **Tool Call**: {part.name}")
-            with st.expander("View Tool Call Details"):
-                # Display tool arguments in a more readable format
-                if hasattr(part, 'arguments'):
+    try:
+        if part.part_kind == 'system-prompt':
+            with st.chat_message("system"):
+                st.markdown(f"**System**: {part.content}")
+        elif part.part_kind == 'user-prompt':
+            with st.chat_message("user"):
+                st.markdown(part.content)
+        elif part.part_kind == 'text':
+            with st.chat_message("assistant"):
+                st.markdown(part.content)
+        elif part.part_kind == 'tool-call':
+            with st.chat_message("tool"):
+                # Use tool_name instead of name
+                st.markdown(f"🔧 **Tool Call**: {part.tool_name}")
+                with st.expander("View Tool Call Details"):
+                    # Handle arguments safely
+                    if hasattr(part, 'arguments'):
+                        try:
+                            if isinstance(part.arguments, str):
+                                args = json.loads(part.arguments)
+                            else:
+                                args = part.arguments
+                            st.json(args)
+                        except json.JSONDecodeError:
+                            st.code(part.arguments)
+                    elif hasattr(part, 'parameters'):
+                        st.json(part.parameters)
+        elif part.part_kind == 'tool-return':
+            with st.chat_message("tool"):
+                st.markdown("🔄 **Tool Result**")
+                with st.expander("View Tool Result"):
                     try:
-                        args = json.loads(part.arguments)
-                        st.json(args)
-                    except json.JSONDecodeError:
-                        st.code(part.arguments)
-    elif part.part_kind == 'tool-return':
-        with st.chat_message("tool"):
-            st.markdown("🔄 **Tool Result**")
-            with st.expander("View Tool Result"):
-                try:
-                    # Try to parse as JSON for better formatting
-                    result = json.loads(part.content)
-                    st.json(result)
-                except json.JSONDecodeError:
-                    # If not JSON, display as markdown
-                    st.markdown(part.content)
+                        # Try to parse content as JSON if it's a string
+                        if isinstance(part.content, str):
+                            result = json.loads(part.content)
+                            st.json(result)
+                        else:
+                            st.markdown(part.content)
+                    except (json.JSONDecodeError, AttributeError):
+                        # If content is not available or not JSON, try return_value
+                        if hasattr(part, 'return_value'):
+                            st.markdown(part.return_value)
+                        else:
+                            st.markdown(str(part))
+    except Exception as e:
+        logger.error(f"Error displaying message part: {str(e)}")
+        st.error(f"Error displaying message part: {str(e)}")
 
 async def run_agent_with_streaming(user_input: str):
     """
@@ -127,6 +143,12 @@ async def main():
         layout="wide"
     )
 
+    # Initialize session state
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+    if "error_count" not in st.session_state:
+        st.session_state.error_count = 0
+
     st.title("🐳 ETHDocker Expert")
     
     # Add sidebar with information
@@ -152,6 +174,7 @@ async def main():
         # Add clear chat button
         if st.button("Clear Chat History"):
             st.session_state.messages = []
+            st.session_state.error_count = 0
             st.rerun()
 
     # Main chat interface
@@ -165,33 +188,54 @@ async def main():
     - Security considerations
     """)
 
-    # Initialize chat history in session state if not present
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    # Create a container for the chat history
+    chat_container = st.container()
 
-    # Display all messages from the conversation so far
-    for msg in st.session_state.messages:
-        if isinstance(msg, ModelRequest) or isinstance(msg, ModelResponse):
-            for part in msg.parts:
-                display_message_part(part)
+    # Create a container for the input
+    input_container = st.container()
 
-    # Chat input for the user
-    user_input = st.chat_input("Ask me anything about ETHDocker setup and management...")
+    # Handle user input first
+    with input_container:
+        user_input = st.chat_input("Ask me anything about ETHDocker setup and management...")
+
+    # Display chat history in the container
+    with chat_container:
+        try:
+            for msg in st.session_state.messages:
+                if isinstance(msg, (ModelRequest, ModelResponse)):
+                    for part in msg.parts:
+                        display_message_part(part)
+        except Exception as e:
+            logger.error(f"Error displaying chat history: {str(e)}")
+            st.error("Error displaying chat history. Try clearing the chat.")
+            st.session_state.error_count += 1
+            if st.session_state.error_count > 3:
+                st.session_state.messages = []
+                st.session_state.error_count = 0
+                st.rerun()
 
     if user_input:
-        # We append a new request to the conversation explicitly
-        st.session_state.messages.append(
-            ModelRequest(parts=[UserPromptPart(content=user_input)])
-        )
-        
-        # Display user prompt in the UI
-        with st.chat_message("user"):
-            st.markdown(user_input)
+        try:
+            # Append new request to conversation
+            st.session_state.messages.append(
+                ModelRequest(parts=[UserPromptPart(content=user_input)])
+            )
+            
+            # Display user prompt in the chat container
+            with chat_container:
+                with st.chat_message("user"):
+                    st.markdown(user_input)
 
-        # Display the assistant's partial response while streaming
-        with st.chat_message("assistant"):
-            # Actually run the agent now, streaming the text
-            await run_agent_with_streaming(user_input)
+                # Display the assistant's response
+                with st.chat_message("assistant"):
+                    await run_agent_with_streaming(user_input)
+
+        except Exception as e:
+            logger.error(f"Error in chat interaction: {str(e)}")
+            st.error("An error occurred. Please try again or clear the chat history.")
+            if st.session_state.messages:
+                st.session_state.messages.pop()
+            st.session_state.error_count += 1
 
 if __name__ == "__main__":
     asyncio.run(main()) 

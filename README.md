@@ -2,6 +2,8 @@
 
 A powerful documentation crawler and knowledge base system that processes and stores documentation from ethdocker.com with advanced semantic search capabilities.
 
+![ETHDocker Expert Interface](screenshot.png)
+
 ## Features
 
 - 🕷️ Asynchronous web crawling with parallel processing
@@ -12,6 +14,34 @@ A powerful documentation crawler and knowledge base system that processes and st
 - 🏷️ Automatic keyword extraction and categorization
 - ⚡ High-performance PostgreSQL storage with pgvector
 - 🔄 Intelligent conflict resolution and version management
+- 💬 Interactive Streamlit chat interface with ETHDocker expert
+
+## Components
+
+### Crawler (`crawl_ethdocker_ai_docs.py`)
+
+- Fetches and processes documentation from ethdocker.com
+- Implements semantic chunking and versioning
+- Handles document storage and updates
+
+### Expert System (`ethdocker_expert.py`)
+
+- Implements the ETHDocker expert agent
+- Provides semantic search and document retrieval
+- Features:
+  - RAG-based document retrieval
+  - Context-aware responses
+  - Section hierarchy navigation
+  - Version history tracking
+  - Keyword-based filtering
+  - Tool-based architecture for extensibility
+
+### Chat Interface (`streamlit.py`)
+
+- Interactive web interface for the expert system
+- Real-time streaming responses
+- Tool usage transparency
+- Conversation management
 
 ## Prerequisites
 
@@ -54,6 +84,8 @@ psql -d your_database -f site_pages.sql
 
 ## Usage
 
+### Crawler
+
 Run the crawler to fetch and process documentation:
 
 ```bash
@@ -67,6 +99,24 @@ The crawler will:
 3. Split content into semantic chunks with context preservation
 4. Generate embeddings and extract metadata
 5. Store processed content with version control
+
+### Interactive Chat Interface
+
+Launch the Streamlit-based chat interface:
+
+```bash
+streamlit run streamlit.py
+```
+
+The chat interface provides:
+
+- 🤖 Interactive conversations with ETHDocker expert
+- 📚 Real-time access to ETHDocker documentation
+- 🔍 Semantic search capabilities
+- 🔧 Transparent tool usage with expandable details
+- 💾 Conversation history management
+- ℹ️ Quick access to key information via sidebar
+- 🧹 Clear chat history functionality
 
 ## Database Schema
 
@@ -99,6 +149,22 @@ The system uses a PostgreSQL database with the following key features:
    - Conflict resolution
    - Version management
    - Linked chunk references
+
+### Chat Interface
+
+1. **User Interface**:
+
+   - Streamlit-based web interface
+   - Real-time streaming responses
+   - Expandable tool details
+   - Information-rich sidebar
+   - Clear conversation management
+
+2. **Integration**:
+   - Direct access to ETHDocker documentation
+   - Semantic search capabilities
+   - Context-aware responses
+   - Tool call transparency
 
 ### Performance Optimizations
 
@@ -134,3 +200,4 @@ The system includes:
 - OpenAI for embedding and GPT-4 APIs
 - Supabase for hosted PostgreSQL
 - pgvector for vector similarity search
+- Streamlit for the interactive interface

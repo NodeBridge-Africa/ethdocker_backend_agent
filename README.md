@@ -15,6 +15,8 @@ A powerful documentation crawler and knowledge base system that processes and st
 - ⚡ High-performance PostgreSQL storage with pgvector
 - 🔄 Intelligent conflict resolution and version management
 - 💬 Interactive Streamlit chat interface with ETHDocker expert
+- 🚀 RESTful API endpoint for ETHDocker expert integration
+- 📝 Conversation history tracking and management
 
 ## Components
 
@@ -42,6 +44,18 @@ A powerful documentation crawler and knowledge base system that processes and st
 - Real-time streaming responses
 - Tool usage transparency
 - Conversation management
+
+### API Endpoint (`ethdocker_endpoint.py`)
+
+- RESTful API for ETHDocker expert integration
+- Features:
+  - Bearer token authentication
+  - Conversation history management
+  - Error handling and logging
+  - Client information tracking
+  - Health check endpoint
+  - CORS support
+  - Supabase integration for message storage
 
 ## Prerequisites
 
@@ -72,14 +86,17 @@ cp .env.example .env
 OPENAI_API_KEY=your_openai_api_key
 SUPABASE_URL=your_supabase_url
 SUPABASE_SERVICE_KEY=your_supabase_service_key
+API_BEARER_TOKEN=your_api_token
 LLM_MODEL=gpt-4-turbo-preview  # or your preferred model
+PORT=8000  # Optional, defaults to 8000
 ```
 
-4. Set up the database schema:
+4. Set up the database schemas:
 
 ```bash
 # Using psql or your preferred PostgreSQL client
 psql -d your_database -f site_pages.sql
+psql -d your_database -f ethdocker_messages.sql
 ```
 
 ## Usage
@@ -108,7 +125,7 @@ Launch the Streamlit-based chat interface:
 streamlit run streamlit.py
 ```
 
-The chat interface provides:
+Features:
 
 - 🤖 Interactive conversations with ETHDocker expert
 - 📚 Real-time access to ETHDocker documentation
@@ -118,9 +135,39 @@ The chat interface provides:
 - ℹ️ Quick access to key information via sidebar
 - 🧹 Clear chat history functionality
 
+### API Endpoint
+
+Start the API server:
+
+```bash
+python ethdocker_endpoint.py
+```
+
+The API will be available at `http://localhost:8000/api/ethdocker-expert`.
+
+Example API request:
+
+```bash
+curl -X POST http://localhost:8000/api/ethdocker-expert \
+  -H "Authorization: Bearer your_api_token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What are the hardware requirements for ETHDocker?",
+    "user_id": "user123",
+    "request_id": "req123",
+    "session_id": "session123"
+  }'
+```
+
+Health check endpoint:
+
+```bash
+curl http://localhost:8000/api/health
+```
+
 ## Database Schema
 
-The system uses a PostgreSQL database with the following key features:
+### Documentation Storage (`site_pages.sql`)
 
 - Vector similarity search using pgvector
 - Full-text search capabilities
@@ -129,10 +176,14 @@ The system uses a PostgreSQL database with the following key features:
 - Keyword-based filtering
 - Metadata-based querying
 
-### Key Functions
+### Conversation History (`ethdocker_messages.sql`)
 
-- `match_ethdocker_site_pages`: Search documents by semantic similarity
-- `get_chunk_version_history`: Retrieve version history for document chunks
+- Session-based message storage
+- JSON message format
+- Timestamp tracking
+- User and request tracking
+- Client information storage
+- Error message handling
 
 ## Architecture
 
@@ -150,21 +201,23 @@ The system uses a PostgreSQL database with the following key features:
    - Version management
    - Linked chunk references
 
-### Chat Interface
+### API Integration
 
-1. **User Interface**:
+1. **Authentication**:
 
-   - Streamlit-based web interface
-   - Real-time streaming responses
-   - Expandable tool details
-   - Information-rich sidebar
-   - Clear conversation management
+   - Bearer token validation
+   - Row-level security in Supabase
 
-2. **Integration**:
-   - Direct access to ETHDocker documentation
-   - Semantic search capabilities
-   - Context-aware responses
-   - Tool call transparency
+2. **Conversation Management**:
+
+   - Session-based history
+   - Message persistence
+   - Error tracking
+
+3. **Response Handling**:
+   - Streaming support
+   - Error recovery
+   - Client feedback
 
 ### Performance Optimizations
 
@@ -201,3 +254,4 @@ The system includes:
 - Supabase for hosted PostgreSQL
 - pgvector for vector similarity search
 - Streamlit for the interactive interface
+- FastAPI for the REST API endpoint
